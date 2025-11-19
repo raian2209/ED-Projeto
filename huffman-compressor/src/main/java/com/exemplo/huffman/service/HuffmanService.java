@@ -3,12 +3,14 @@ package com.exemplo.huffman.service;
 import com.exemplo.huffman.util.BinaryIn;
 import com.exemplo.huffman.util.BinaryOut;
 import com.exemplo.huffman.util.Node;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+@Service
 public class HuffmanService {
 
     private static final int PSEUDO_EOF = 256;
