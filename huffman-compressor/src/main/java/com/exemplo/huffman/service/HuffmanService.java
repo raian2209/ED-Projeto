@@ -15,11 +15,6 @@ public class HuffmanService {
 
     private static final int PSEUDO_EOF = 256;
 
-    private String[] codeTable;  // tabela de códigos gerada a partir da árvore
-
-    /**
-     * COMPRIME um array de bytes usando Huffman.
-     */
     public byte[] compress(byte[] inputData) throws IOException {
 
         // 1. Construir Tabela de Frequência
@@ -29,28 +24,40 @@ public class HuffmanService {
         Node root = buildHuffmanTree(freqTable);
 
         // 3. Construir Tabela de Códigos
-        codeTable = new String[257];
-        buildCodeTable(root);
+        Map<Integer, String> lookupMap = buildCodeTable(root);
+
+        // Agora preenchemos o array local usando o Mapa
+        String[] localCodeTable = new String[257];
+        for (Map.Entry<Integer, String> entry : lookupMap.entrySet()) {
+            localCodeTable[entry.getKey()] = entry.getValue();
+        }
 
         // 4. Stream de Saída
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         BinaryOut bitOut = new BinaryOut(baos);
 
-        // 5. Escrever Cabeçalho (os 257 valores da tabela)
+        // 5. Escrever Cabeçalho (os 257 valores da tabela de frequencia)
         for (int i = 0; i < freqTable.length; i++) {
             bitOut.write(freqTable[i]);
         }
 
         // 6. Escrever Corpo (bits dos códigos)
         for (byte b : inputData) {
-            String code = codeTable[b & 0xFF];
+            // Usamos a variável local agora, garantindo que não é nula
+            String code = localCodeTable[b & 0xFF];
+
+            // Verificação de segurança (opcional, mas boa para debug)
+            if (code == null) {
+                throw new IOException("Código Huffman não encontrado para o byte: " + (b & 0xFF));
+            }
+
             for (char c : code.toCharArray()) {
                 bitOut.write(c == '1');
             }
         }
 
         // 7. Escrever PSEUDO_EOF
-        String eofCode = codeTable[PSEUDO_EOF];
+        String eofCode = localCodeTable[PSEUDO_EOF];
         for (char c : eofCode.toCharArray()) {
             bitOut.write(c == '1');
         }
@@ -100,8 +107,6 @@ public class HuffmanService {
         baos.close();
         return baos.toByteArray();
     }
-
-
 
     // ------------------------------------------------------------
     // 1) Construção da Tabela de Frequências
