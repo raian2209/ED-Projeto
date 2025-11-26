@@ -2,6 +2,7 @@ package com.exemplo.huffman.service;
 
 import com.exemplo.huffman.util.BinaryIn;
 import com.exemplo.huffman.util.BinaryOut;
+import com.exemplo.huffman.util.MinHeap;
 import com.exemplo.huffman.util.Node;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,7 @@ public class HuffmanService {
         // 3. Construir Tabela de Códigos
         Map<Integer, String> lookupMap = buildCodeTable(root);
 
-        // Agora preenchemos o array local usando o Mapa
+        // Agora preenche o array local usando o Mapa
         String[] localCodeTable = new String[257];
         for (Map.Entry<Integer, String> entry : lookupMap.entrySet()) {
             localCodeTable[entry.getKey()] = entry.getValue();
@@ -43,15 +44,12 @@ public class HuffmanService {
 
         // 6. Escrever Corpo (bits dos códigos)
         for (byte b : inputData) {
-            // Usamos a variável local agora, garantindo que não é nula
+            //  garantindo que não é nula
             String code = localCodeTable[b & 0xFF];
 
-            // Verificação de segurança (opcional, mas boa para debug)
-            if (code == null) {
-                throw new IOException("Código Huffman não encontrado para o byte: " + (b & 0xFF));
-            }
-
             for (char c : code.toCharArray()) {
+                // true, escreve 1 bit
+                // false, escreve 0 bit
                 bitOut.write(c == '1');
             }
         }
@@ -125,26 +123,26 @@ public class HuffmanService {
     }
 
     // ------------------------------------------------------------
-    // 2) Construção da Árvore de Huffman (usando PriorityQueue)
+    // 2) Construção da Árvore de Huffman
     // ------------------------------------------------------------
     public Node buildHuffmanTree(int[] freqTable) {
-        PriorityQueue<Node> pq = new PriorityQueue<>();
+        MinHeap pq = new MinHeap();
 
         // Cria nós individuais para bytes com frequência > 0
         for (int i = 0; i < freqTable.length; i++) {
             if (freqTable[i] > 0) {
-                pq.add(new Node(i, freqTable[i]));
+                pq.minHeapInsert(new Node(i, freqTable[i]));
             }
         }
 
         // Junta os dois menores até restar só um
         while (pq.size() > 1) {
-            Node a = pq.poll();
-            Node b = pq.poll();
-            pq.add(new Node(a, b));  // nó interno
+            Node a = pq.minHeapRemove();
+            Node b = pq.minHeapRemove();
+            pq.minHeapInsert(new Node(a, b));  // nó interno
         }
 
-        return pq.poll(); // raiz
+        return pq.minHeapRemove(); // raiz
     }
 
     // ------------------------------------------------------------
@@ -165,46 +163,6 @@ public class HuffmanService {
         buildCodesRecursive(node.right, path + "1", map);
     }
 
-    // ------------------------------------------------------------
-    // 4) Compressão: converte os bytes em uma String de bits
-    // ------------------------------------------------------------
-    public String compress(byte[] input, Map<Integer, String> codeTable) {
-        StringBuilder encoded = new StringBuilder();
 
-        for (byte b : input) {
-            encoded.append(codeTable.get(b & 0xFF));
-        }
-
-        // adiciona PSEUDO_EOF
-        encoded.append(codeTable.get(PSEUDO_EOF));
-
-        return encoded.toString();
-    }
-
-    // ------------------------------------------------------------
-    // 5) Descompressão: reconstrói bytes a partir dos bits
-    // ------------------------------------------------------------
-    public byte[] decompress(String bits, Node root) {
-        List<Byte> output = new ArrayList<>();
-        Node current = root;
-
-        for (char c : bits.toCharArray()) {
-            current = (c == '0') ? current.left : current.right;
-
-            if (current.isLeaf()) {
-                if (current.value == PSEUDO_EOF) break; // fim
-
-                output.add((byte) current.value);
-                current = root;
-            }
-        }
-
-        // converte para byte[]
-        byte[] result = new byte[output.size()];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = output.get(i);
-        }
-        return result;
-    }
 
 }
